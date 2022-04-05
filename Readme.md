@@ -3,4 +3,5 @@
 - <code>pip install requests</code>
 - <code>pip install beautifulsoup4</code> 
 - <code>pip install googlesearch-python</code>
+- <code>pip install lxml</code>
 
