@@ -1,19 +1,13 @@
-import requests
-import os
 import config
-import string
+from translation import get_translation
 from telebot import TeleBot, types
-from googlesearch import search
-from bs4 import BeautifulSoup
-from time import sleep
-from random import randint
 
 TRANSLATE_SONG_BTN_TEXT = "Хочу перевести песню"
 
 
 # Bot function
 def telegram_bot():
-    bot = TeleBot(config.TOKEN)
+    bot = TeleBot(config.TOKEN, parse_mode="HTML")
 
     @bot.message_handler(commands=['start'])
     def start_command(message):
@@ -30,93 +24,76 @@ def telegram_bot():
     @bot.message_handler(content_types='text', func=lambda message: message.text == TRANSLATE_SONG_BTN_TEXT)
     def translate(message):
         bot.delete_message(message.chat.id, message_id=message.id)
-        bot_msg = bot.send_message(message.chat.id, "Напиши мне имя исполнителя и название песни")
+        bot_msg = bot.send_message(message.chat.id, "Напиши мне имя исполнителя и название песни (одним сообщением)")
         bot.register_next_step_handler(bot_msg, callback=send_translation)
 
     def send_translation(message):
         bot_msg = bot.send_message(message.chat.id, "Секундочку, ищу перевод...")
         song_name = message.text.replace("-", "")
-        searched_url = google_search_urls(song_name)[0]
-        song_info, *song_text = get_translation(searched_url)
-        info = f'Песня: {song_info["artist_name"]} - {song_info["song_original_name"].title()}\n' \
-               f'Альбом: {song_info["album_name"].title()}\n' \
-               f'Автор перевода: {song_info["translation_author_name"].title()}\n' \
-               f'Перевод на сайте: {song_info["translation_url"]}'
 
+        translation = get_translation(song_name)
+        if translation is None:
+            text = f"Я не смог найти перевода такой песни 🥺 \n" \
+                   f"Возможно вы ввели название неверно, " \
+                   f"или перевода этой песни ещё не существует 🧐 \n"
+            bot.edit_message_text(chat_id=message.chat.id, message_id=bot_msg.id, text=text)
+            return
+
+        song_info, song_text = translation
+
+        # forming a translation info
+        formated_info = f'Исполнитель: {song_info["artist_name"]}\n' \
+                        f'Песня: {song_info["song_original_name"]}\n' \
+                        f'Альбом: {song_info["album_name"].title()}\n' \
+                        f'Автор перевода: {song_info["translation_author_name"].title()}\n' \
+                        f'Перевод на сайте: {song_info["translation_url"]}'
+
+        # send translation info
         bot.delete_message(message.chat.id, message_id=bot_msg.id)
-        bot.send_photo(message.chat.id, caption=info, photo=song_info["album_cover_url"])
+        bot.send_photo(message.chat.id, caption=formated_info, photo=song_info["album_cover_url"])
 
-        fomated_text = ""
-        for n, eng, rus in song_text:
-            fomated_text += f"<b>{eng}</b>\n<i>{rus}</i>\n"
-            if n % 5 == 0:
-                fomated_text += "\n"
-        bot.send_message(message.chat.id, fomated_text, parse_mode="HTML")
+        # forming the translation to send
+        formated_text = f'<b>{song_info["song_original_name"]}</b> - ' \
+                        f'<i>{song_info["song_translated_name"]}</i>\n\n'
+        i = 1
+        for eng, rus in song_text:
+            formated_text += f"<b>{eng}</b>\n" \
+                             f"<i>{rus}</i>\n"
+            if i % 5 == 0:
+                formated_text += "\n"
+            i += 1
+
+        messages = message_split(formated_text)
+
+        # sending all the messages
+        for msg in messages:
+            bot.send_message(message.chat.id, msg)
 
     bot.polling()
 
-#
-# # return translation from url
-# def get_translation(song_url: str):
-#     req = requests.get(song_url, headers=config.HEADER)
-#     if req.status_code != 200:
-#         print("Error. Can't connect to this url")
-#         return
-#     html_text = req.text
-#     with open(config.LOCAL_FILE_NAME, "w", encoding="utf-8") as file_out:
-#         file_out.write(html_text)
-#
-#     # Reading from local file
-#     # with open(FILE_NAME, "r", encoding="utf-8") as fin:
-#     #     html_text = fin.read()
-#     os.remove(config.LOCAL_FILE_NAME)
-#
-#     soup = BeautifulSoup(html_text, "lxml")
-#     translation_table = soup.find("table", class_="content_texts")
-#
-#     # parsing english text
-#     english_html = translation_table.find("p", id="fr_text")
-#     english_text = [item.text.strip().strip(string.digits) for item in english_html if item.text.strip()]
-#
-#     # parsing russian text
-#     russian_html = translation_table.find("p", id="ru_text")
-#     russian_text = [item.text.strip().strip(string.digits) for item in russian_html if item.text.strip()]
-#
-#     # parsing song information
-#     names_line = soup.find("div", class_="breadcrumbs songBreads").find_all("span", itemprop="itemListElement")
-#     artist_name, album_name, song_original_name = [item.text.strip() for item in names_line]
-#
-#     song_translated_name = soup.find("h2", id="ru_title").text.strip()
-#
-#     # parsing album cover
-#     cover_url = soup.find("img", alt=album_name).get("src").replace("/./", "https://en.lyrsense.com/")
-#
-#     # parsing translator information
-#     translation_author_name = soup.find("div",
-#                                         id="author_var1").text.strip().replace("Автор перевода — ",
-#                                                                                "").replace("Страница автора",
-#                                                                                            "")
-#
-#     # zipping result
-#     result = [{
-#         "artist_name": artist_name,
-#         "album_name": album_name,
-#         "song_original_name": song_original_name,
-#         "song_translated_name": song_translated_name,
-#         "translation_author_name": translation_author_name,
-#         "album_cover_url": cover_url,
-#         "translation_url": song_url}]
-#
-#     for i in range(min(len(english_text), len(russian_text))):
-#         result.append((i + 1, english_text[i], russian_text[i]))
-#
-#     return result
-#
-#
-# # get list of searched translations
-# def google_search_urls(song_name: str, num_of_results=3):
-#     sleep(randint(1, 2))
-#     return [url for url in search(f"{song_name} перевод", num_results=num_of_results) if "en.lyrsense.com" in url]
+
+def message_split(message: str, char_num_cap=5000, splitter="\n\n"):
+    """
+    :param message: message to split
+    :param char_num_cap: maximum amount of chars in one sub message
+    :param splitter: patter for split place
+    :return: iterable of sub messages
+    """
+    messages = []
+    if len(message) - char_num_cap > 1:
+        num_of_messages = len(message) // char_num_cap + 1
+        size = len(message) // num_of_messages + 1
+
+        # splitting message to smaller messages
+        for i in range(num_of_messages):
+            submessage = message[size * i:size * (i + 1)]
+            index = submessage.rfind(splitter)
+            messages.append(submessage[:index + 1].strip())
+            message = message.replace(submessage[:index + 1], "")
+
+        # removing empty messages
+    messages.append(message.strip())
+    return filter(None, messages)
 
 
 if __name__ == "__main__":
