@@ -1,1 +1,1 @@
-wed: gunicorn main:app -- log file -
+wed: python3 main.py
