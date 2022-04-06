@@ -1,5 +1,5 @@
 import requests
-import asyncio
+import time
 import config
 from bs4 import BeautifulSoup
 from random import randint
@@ -16,7 +16,7 @@ def get_translation(song_name: str, num_of_results=4, song_url=None):
     """
     # Searching for the translation url in google
     if song_url is None or "en.lyrsense.com" not in song_url:
-        asyncio.sleep(randint(1, 2))
+        time.sleep(randint(1, 2))
         song_url = None
         for url in search(f"{song_name} перевод", num_results=num_of_results):
             if "en.lyrsense.com" in url:
@@ -32,8 +32,10 @@ def get_translation(song_name: str, num_of_results=4, song_url=None):
         print("Error. Can't connect to this url")
         return None
     html_text = req.text
-    with open(config.LOCAL_FILE_NAME, "w", encoding="utf-8") as file_out:
-        file_out.write(html_text)
+
+    # Saving html with translation to file
+    # with open(config.LOCAL_FILE_NAME, "w", encoding="utf-8") as file_out:
+    #     file_out.write(html_text)
 
     # Reading from local file
     # with open(FILE_NAME, "r", encoding="utf-8") as fin:
@@ -69,13 +71,13 @@ def get_translation(song_name: str, num_of_results=4, song_url=None):
                                                                                            "")
 
     # zipping result
-    result = [{
+    translation_info = {
         "artist_name": artist_name,
         "album_name": album_name,
         "song_original_name": song_original_name,
         "song_translated_name": song_translated_name,
         "translation_author_name": translation_author_name,
         "album_cover_url": cover_url,
-        "translation_url": song_url}]
+        "translation_url": song_url}
 
-    return zip(english_text, russian_text)
+    return translation_info, tuple(zip(english_text, russian_text))
