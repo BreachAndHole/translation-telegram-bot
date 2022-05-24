@@ -15,10 +15,7 @@ def telegram_bot():
         translate_btn = types.KeyboardButton(TRANSLATE_SONG_BTN_TEXT)
         keyboard.add(translate_btn)
 
-        name = message.from_user.first_name
-        surname = message.from_user.last_name
-        text = f"Привет, {name} {surname if surname else str()}\n" \
-               f"Я - бот, занимающийся поиском переводов твоих любимых песен."
+        text = f"Привет, я занимаюсь поиском переводов твоих любимых песен. Для начала введи /start"
         bot.send_message(message.chat.id, text, reply_markup=keyboard)
 
     @bot.message_handler(content_types='text', func=lambda message: message.text == TRANSLATE_SONG_BTN_TEXT)
@@ -73,12 +70,6 @@ def telegram_bot():
 
 
 def message_split(message: str, char_num_cap=5000, splitter="\n\n"):
-    """
-    :param message: message to split
-    :param char_num_cap: maximum amount of chars in one sub message
-    :param splitter: patter for split place
-    :return: iterable of sub messages
-    """
     messages = []
     if len(message) - char_num_cap > 1:
         num_of_messages = len(message) // char_num_cap + 1
