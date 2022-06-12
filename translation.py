@@ -1,13 +1,12 @@
 from enum import Enum
 from typing import NamedTuple
 
-import bs4.element
 import googlesearch
 import requests
 from bs4 import BeautifulSoup
 from fake_headers import Headers
 
-from errors import *
+from exceptions import *
 
 
 class SongTextTag(Enum):
@@ -39,36 +38,42 @@ def get_translation(song_name: str) -> TranslationResult:
     Searching for the translation on lyrsense website
     and returns the song information and translation.
     """
+    # Getting the translation link
     try:
         song_url = _get_translation_link(song_name)
+    except SearchEngineHTTPError:
+        raise SearchEngineHTTPError('Bot got timed out by google')
     except TranslationSearchError:
         raise CantGetTranslationError('No translation link found')
 
-    # getting the translation page
+    # Getting the translation page
     try:
         html_text = _get_page_html(song_url)
     except TranslationConnectionError:
         raise CantGetTranslationError('Could not connect to translation url')
 
     soup = BeautifulSoup(html_text, "lxml")
-    translation_table = soup.find("table", class_="content_texts")
 
-    english_text = _get_song_text(translation_table, SongTextTag.ENGLISH)
-    russian_text = _get_song_text(translation_table, SongTextTag.RUSSIAN)
+    # Extracting original text and translation
+    english_text = _get_song_text(soup, SongTextTag.ENGLISH)
+    russian_text = _get_song_text(soup, SongTextTag.RUSSIAN)
 
+    # Extracting translation information
     translation_info = _get_translation_information(soup)
     translation = _get_formatted_translation(english_text, russian_text)
 
     return TranslationResult(translation_info, translation)
 
 
-def _get_translation_link(song_request: str, number_of_links=10) -> str:
+def _get_translation_link(song_name: str, links_limit=10) -> str:
     """ Search for the translation link of the song."""
     try:
         searched_links = googlesearch.search(
-            f'{song_request} перевод',
-            num_results=number_of_links
+            f'{song_name} перевод lyrsense',
+            num_results=links_limit
         )
+    except requests.exceptions.HTTPError:
+        raise SearchEngineHTTPError
     except Exception:
         raise TranslationSearchError('Error during translation searching')
 
@@ -88,9 +93,10 @@ def _get_page_html(translation_url: str) -> str:
         raise TranslationConnectionError
 
 
-def _get_song_text(bs_table: bs4.element.Tag, lang: SongTextTag) -> list[str]:
+def _get_song_text(page_soup: BeautifulSoup, lang: SongTextTag) -> list[str]:
     """ Returns the song text as a list of lines."""
-    lines = bs_table.find('p', id=lang.value)
+    translation_table = page_soup.find("table", class_="content_texts")
+    lines = translation_table.find('p', id=lang.value)
     parsed_text = []
     for line in lines:
         line = line.text.strip()
@@ -100,22 +106,22 @@ def _get_song_text(bs_table: bs4.element.Tag, lang: SongTextTag) -> list[str]:
     return parsed_text
 
 
-def _get_translation_information(soup: BeautifulSoup) -> TranslationInfo:
+def _get_translation_information(page_soup: BeautifulSoup) -> TranslationInfo:
     """ Get all the translation info"""
-    names_line = soup.find(
+    names_line = page_soup.find(
         'div',
         class_='breadcrumbs songBreads'
     ).find_all("span", itemprop='itemListElement')
     artist, album, song = [item.text.strip() for item in names_line]
-    song_translated_name = soup.find('h2', id='ru_title').text.strip()
+    song_translated_name = page_soup.find('h2', id='ru_title').text.strip()
 
     # album cover
-    album_cover_url = soup.find(
+    album_cover_url = page_soup.find(
         'img',
         alt=album
     ).get('src').replace('/./', 'https://gb.lyrsense.com/')
 
-    translator = soup.find(
+    translator = page_soup.find(
         'div',
         id='author_var1'
     ).text.strip().replace(

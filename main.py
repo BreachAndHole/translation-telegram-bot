@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from telebot import TeleBot, types
 
-from errors import CantGetTranslationError
+from exceptions import CantGetTranslationError, SearchEngineHTTPError
 from translation import TranslationInfo, TranslationText, get_translation
 
 
@@ -41,6 +41,15 @@ def telegram_bot():
         )
         try:
             translation_results = get_translation(song_name=message.text)
+        except SearchEngineHTTPError:
+            text = 'Я устал и не могу делать поиск в данных момент.' \
+                   'Попробуйте повторить запрос позже.'
+            bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=bot_msg.id,
+                text=text
+            )
+            return
         except CantGetTranslationError:
             text = 'Я не смог найти перевода такой песни 🥺 \n'\
                    'Возможно вы ввели название неверно, '\
