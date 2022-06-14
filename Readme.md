@@ -1,5 +1,8 @@
-# Song Translation Telegram Bot
+<h1 align="center">Song Translation Telegram Bot</h1>
 
+![python](https://img.shields.io/badge/Python-3.10-blue)
+![coverage](https://img.shields.io/badge/Coverage-93%25-blue)
+___
 This readme is bilingual:
  - [Russian version](#краткое-описание)
  - [English version](#brief-description)
@@ -7,8 +10,6 @@ ___
 ## Краткое описание
 Этот телеграм бот сделан для поиска переводов песен с английского языка на русский.
 На данный момент бот поддерживает поиск по сайту [Lyrsense.com](https://gb.lyrsense.com/)
-
-Используемая при написании версия Python - 3.10.
 
 ## Используемые библиотеки
 
@@ -49,8 +50,6 @@ ___
 
 This telegram bot made to search translations of song from English into Russian.
 For now the bot supports search at [Lyrsense.com](https://gb.lyrsense.com/) website.
-
-Python version - 3.10.
 
 ## Используемые библиотеки
 
