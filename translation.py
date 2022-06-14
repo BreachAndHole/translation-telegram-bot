@@ -10,11 +10,13 @@ from exceptions import *
 
 
 class SongTextTag(Enum):
-    ENGLISH = "fr_text"  # Yes, it's French tag in class name for some reasons
+    """ HTML class for finding needed text lines in translation table """
+    ENGLISH = "fr_text"  # Yes, on the website it's French for some reasons
     RUSSIAN = "ru_text"
 
 
 class TranslationInfo(NamedTuple):
+    """ Tuple representing all song info needed to be parsed"""
     artist: str
     album_name: str
     song_name: str
@@ -24,23 +26,25 @@ class TranslationInfo(NamedTuple):
 
 
 class TranslationText(NamedTuple):
+    """ Tuple representing one line of eng and rus text """
     english: str
     russian: str
 
 
 class TranslationResult(NamedTuple):
+    """ Tuple representing overall result of translation parsing function """
     information: TranslationInfo
     translation: list[TranslationText]
 
 
-def get_translation(song_name: str) -> TranslationResult:
+def get_translation(song_name: str, links_limit=10) -> TranslationResult:
     """
     Searching for the translation on lyrsense website
     and returns the song information and translation.
     """
     # Getting the translation link
     try:
-        song_url = _get_translation_link(song_name)
+        song_url = _get_translation_link(song_name, links_limit)
     except SearchEngineHTTPError:
         raise SearchEngineHTTPError('Bot got timed out by google')
     except TranslationSearchError:
@@ -89,7 +93,7 @@ def _get_page_html(translation_url: str) -> str:
     header = Headers(browser="chrome", os="win", headers=True)
     try:
         return requests.get(translation_url, headers=header.generate()).text
-    except ConnectionError:
+    except requests.exceptions.ConnectionError:
         raise TranslationConnectionError
 
 
