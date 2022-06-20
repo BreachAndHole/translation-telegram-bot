@@ -46,12 +46,12 @@ $ python3.10 main.py
 ```
 
 ___
-## Brief Description
+## Brief description
 
 This telegram bot made to search translations of song from English into Russian.
 For now the bot supports search at [Lyrsense.com](https://gb.lyrsense.com/) website.
 
-## Используемые библиотеки
+## Used libraries
 
 Core:
  - `pyTelegramBotAPI` - [API Telegram](https://github.com/eternnoir/pyTelegramBotAPI), core bot functionality
